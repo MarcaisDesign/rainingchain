@@ -3,13 +3,14 @@
 var Main = require2('Main');
 
 var Party = exports.Party = {};
+Party.SOLO = '&';	//hardcoded in Dialog
 Party.create = function(id){
 	var tmp = {
 		id:id,
 		leader:null,
 		list:{},
-		maxSize:100,
 		quest:null,
+		solo:id[0] === Party.SOLO
 	};
 	LIST[id] = tmp;
 	return tmp;
@@ -18,17 +19,13 @@ var LIST = Party.LIST = {};
 
 Party.remove = function(party){
 	for(var i in party.list)
-		Main.leaveParty(Main.get(i));	//true to prevent infinite loop
+		Main.leaveParty(Main.get(i));
 	delete LIST[party.id];
 }
 
 Party.onSignIn = function(main){ //should be in Main.onSignIn... but need to be b4 teleport map
-	var newParty = Party.get(main.username) ? Math.randomId() : main.username;
-	Main.joinParty(main,newParty);	
+	Main.joinParty(main,Party.SOLO + Math.randomId(),false);	
 }
-
-
-	
 
 Party.getKeyList = function(party){
 	return Object.keys(party.list);
@@ -43,7 +40,8 @@ Party.get = function(id){
 
 Party.addPlayer = function(party,key,name){
 	party.list[key] = name;
-	if(!party.leader) Party.changeLeader(party,key,false);
+	if(!party.leader) 
+		Party.changeLeader(party,key,false);
 	Party.addMessage(party,name.q() + ' has joined the party.');
 	Party.setFlagForAll(party);
 }
@@ -60,7 +58,8 @@ Party.removePlayer = function(party,key){
 	Party.setFlagForAll(party);
 }
 Party.changeLeader = function(party,key,message){
-	if(!party.list[key]) return ERROR(3,'leader not in party');
+	if(!party.list[key]) 
+		return ERROR(3,'leader not in party');
 	
 	party.leader = key;
 	if(message !== false) Party.addMessage(party,'Your new party leader is ' + Main.get(key).username.q() + '.');
@@ -76,6 +75,10 @@ Party.addMessage = function(party,str,toexclude){
 Party.setFlagForAll = function(party){
 	for(var i in party.list){
 		var main = Main.get(i);
+		if(!main){
+			ERROR(3,'no main',i);
+			continue;
+		}
 		Main.setFlag(main,'party');
 		main.party = Main.Party(party);
 	}
